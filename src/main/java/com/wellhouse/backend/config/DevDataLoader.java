@@ -4,17 +4,21 @@ import com.wellhouse.backend.domain.risk.Advisory;
 import com.wellhouse.backend.domain.risk.RiskLevel;
 import com.wellhouse.backend.entity.DeviceEntity;
 import com.wellhouse.backend.entity.DeviceStateEntity;
+import com.wellhouse.backend.entity.UserEntity;
 import com.wellhouse.backend.entity.WeatherEntity;
 import com.wellhouse.backend.repository.DeviceRepository;
 import com.wellhouse.backend.repository.DeviceStateRepository;
+import com.wellhouse.backend.repository.UserRepository;
 import com.wellhouse.backend.repository.WeatherRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /** 개발 프로파일 데모 시드: 기상 지역 + 페어링 대기 데모 기기. */
 @Slf4j
@@ -26,9 +30,24 @@ public class DevDataLoader implements CommandLineRunner {
     private final WeatherRepository weatherRepo;
     private final DeviceRepository deviceRepo;
     private final DeviceStateRepository stateRepo;
+    private final UserRepository userRepo;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
+        // 시연용 고정 데모 계정: 앱에서 demo / demo1234 로 로그인.
+        // (앱 규칙상 아이디 "demo" → 이메일 "demo@wellhouse.app")
+        String demoEmail = "demo@wellhouse.app";
+        if (userRepo.findByEmail(demoEmail).isEmpty()) {
+            userRepo.save(UserEntity.builder()
+                    .uid(UUID.randomUUID().toString())
+                    .email(demoEmail)
+                    .passwordHash(passwordEncoder.encode("demo1234"))
+                    .address("서울특별시 중구")   // 날씨가 서울 격자로 해석되도록
+                    .build());
+            log.info("데모 계정 시드: {} (pw=demo1234)", demoEmail);
+        }
+
         for (String region : new String[]{"seoul", "incheon", "gyeonggi"}) {
             if (!weatherRepo.existsById(region)) {
                 weatherRepo.save(WeatherEntity.builder()

@@ -62,6 +62,32 @@ public class DevController {
         return st;
     }
 
+    /**
+     * 시연 시작점 리셋: 기기 online=true + 상태 GOOD + 낮은 baseline 수위 샘플.
+     * 이후 실제 센서로 물이 차오르면 서버가 위험단계를 자동 상승시킨다.
+     * 예: POST /api/dev/demo/reset/demo-device-01
+     */
+    @PostMapping("/demo/reset/{deviceId}")
+    public DeviceStateEntity resetDemo(@PathVariable String deviceId) {
+        deviceRepo.findById(deviceId).ifPresent(dev -> {
+            dev.setOnline(true);
+            deviceRepo.save(dev);
+        });
+
+        DeviceStateEntity st = stateRepo.findById(deviceId)
+                .orElseGet(() -> DeviceStateEntity.builder().deviceId(deviceId).build());
+        st.setLevel(RiskLevel.GOOD);
+        st.setRawLevel(RiskLevel.GOOD);
+        st.setRiseCmPerMin(0.0);
+        st.setUpdatedAt(Instant.now());
+        stateRepo.save(st);
+
+        // 깨끗한 시작점: 낮은 baseline 수위 한 점.
+        waterSampleRepo.save(WaterSampleEntity.builder()
+                .deviceId(deviceId).levelCm(0).ts(Instant.now()).build());
+        return st;
+    }
+
     /** 데모용 위험단계 → 대표 수위(cm). */
     private double cmFor(RiskLevel lv) {
         return switch (lv) {
