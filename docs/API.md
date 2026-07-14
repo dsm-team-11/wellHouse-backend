@@ -41,8 +41,11 @@
 | POST | `/api/devices/{id}/commands` | 원격 명령 `{target: POWER\|WINDOW\|WATER_GATE\|WAKEUP}` |
 | GET | `/api/notifications` | 알림함 |
 | POST | `/api/notifications/{id}/read` | 읽음 처리 |
-| GET/PUT | `/api/users/me`, `/api/users/me/home` | 내 정보/집 정보 |
+| GET/PUT | `/api/users/me`, `/api/users/me/home` | 내 정보/집 정보(`home` 바디에 `address` 포함 시 기상청 격자 자동 계산) |
 | POST/DELETE | `/api/users/me/fcm-token` | FCM 토큰 등록/해제 `{token}` |
+| GET | `/api/weather/me` | 내 주소 기준 현재 기상 → `{region, rainMmH, forecastMmH, advisory, hazardRank, hazardLabel, live, updatedAt}` |
+
+> 날씨는 기상청 초단기실황/예보(공공데이터포털)에서 온다. `KMA_SERVICE_KEY`(일반 인증키 Decoding) 환경변수가 있어야 실데이터(`live=true`)를 받고, 없으면 강수 0으로 안전 동작한다. 회원가입 주소의 시/도·시군구를 격자(nx,ny)로 변환해 조회하며, 격자별 10분 캐시.
 
 ## 4. 앱 실시간 (WebSocket STOMP)
 
