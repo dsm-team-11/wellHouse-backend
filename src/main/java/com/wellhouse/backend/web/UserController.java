@@ -21,7 +21,10 @@ public class UserController {
 
     public record HomeReq(Double homeAreaM2, Boolean isSemiBasement,
                           Double homeLat, Double homeLng, Integer windowCount,
-                          String address) {}
+                          String address,
+                          Integer floorHeightCm, String entrance, Boolean barrierInstalled,
+                          Integer floodHistoryLevel, String emergencyName, String emergencyPhone,
+                          java.util.List<String> windowSizes) {}
     public record FcmTokenReq(@NotBlank String token) {}
 
     @GetMapping
@@ -43,6 +46,17 @@ public class UserController {
             u.setAddress(req.address().trim());
             u.setGridNx(loc.cell().nx());
             u.setGridNy(loc.cell().ny());
+        }
+        // 나머지 집 세부정보/비상연락처/창문크기 — 값이 온 것만 갱신(부분 저장 시 기존 값 보존).
+        if (req.floorHeightCm() != null) u.setFloorHeightCm(req.floorHeightCm());
+        if (req.entrance() != null) u.setEntrance(req.entrance());
+        if (req.barrierInstalled() != null) u.setBarrierInstalled(req.barrierInstalled());
+        if (req.floodHistoryLevel() != null) u.setFloodHistoryLevel(req.floodHistoryLevel());
+        if (req.emergencyName() != null) u.setEmergencyName(req.emergencyName());
+        if (req.emergencyPhone() != null) u.setEmergencyPhone(req.emergencyPhone());
+        if (req.windowSizes() != null) {
+            u.getWindowSizes().clear();
+            u.getWindowSizes().addAll(req.windowSizes());
         }
         return userRepo.save(u);
     }
