@@ -19,7 +19,9 @@ wellhouse:
   jwt:
     # 운영에서는 환경변수 WELLHOUSE_JWT_SECRET 로 주입 (Base64, 256bit 이상)
     secret: ${WELLHOUSE_JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1wbGVhc2UtMzJieXRlcyE=}
-    access-token-ttl-minutes: 120
+    # 로그인 세션 유지: 30일(=43200분). 앱은 토큰을 SharedPreferences에 보관하므로
+    # 이 기간 동안 재로그인 없이 유지된다. (운영에선 짧게 두고 refresh 토큰 권장)
+    access-token-ttl-minutes: 43200
     device-token-ttl-days: 3650
   mqtt:
     enabled: ${WELLHOUSE_MQTT_ENABLED:true}
