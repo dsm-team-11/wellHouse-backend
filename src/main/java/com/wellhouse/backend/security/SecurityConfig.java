@@ -31,7 +31,9 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/dev/**", "/ws/**", "/h2-console/**", "/actuator/**").permitAll()
+                        // /error 를 열어두지 않으면 컨트롤러의 401/409 등이 에러 포워딩 과정에서
+                        // 403 으로 덮어써진다(익명 사용자가 보호된 /error 재진입). → 상태코드 보존.
+                        .requestMatchers("/error", "/api/auth/**", "/api/dev/**", "/ws/**", "/h2-console/**", "/actuator/**").permitAll()
                         .requestMatchers("/api/firmware/**").hasRole("DEVICE")
                         .anyRequest().authenticated())
                 // H2 콘솔 iframe 허용
