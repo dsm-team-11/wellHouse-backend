@@ -41,19 +41,21 @@ public class PasswordResetService {
     private record Code(String value, Instant expiresAt, int attempts) {}
 
     /**
-     * 인증코드 발급 + {@code contactEmail} 로 발송.
-     * 계정 존재 여부를 노출하지 않기 위해, 계정이 없어도 예외 없이 조용히 반환한다.
+     * 인증코드 발급 + 계정에 저장된 복구 이메일로 발송.
+     * 계정 존재 여부·이메일 소유 여부를 노출하지 않기 위해, 계정이 없거나 입력한 이메일이
+     * 가입 시 등록한 복구 이메일과 다르면 예외 없이 조용히 반환한다(발송만 skip).
      */
     public void requestCode(String accountEmail, String contactEmail) {
         UserEntity user = userRepo.findByEmail(accountEmail).orElse(null);
-        if (user == null) {
-            log.info("[RESET] 존재하지 않는 계정 요청 무시: {}", accountEmail);
+        if (user == null || user.getRecoveryEmail() == null
+                || !user.getRecoveryEmail().equalsIgnoreCase(contactEmail.trim())) {
+            log.info("[RESET] 계정 없음/이메일 불일치 — 발송 skip: {}", accountEmail);
             return;
         }
         String code = String.format("%06d", RANDOM.nextInt(1_000_000));
         codes.put(accountEmail, new Code(code, Instant.now().plus(CODE_TTL), 0));
         mailService.send(
-                contactEmail,
+                user.getRecoveryEmail(),
                 "[웰하우스] 비밀번호 재설정 인증코드",
                 "인증코드: " + code + "\n\n10분 안에 앱에 입력해주세요.\n본인이 요청하지 않았다면 이 메일을 무시하세요."
         );

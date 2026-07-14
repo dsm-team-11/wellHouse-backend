@@ -18,7 +18,9 @@ public class AuthController {
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
 
-    public record RegisterRequest(@Email @NotBlank String email, @NotBlank String password) {}
+    /** recoveryEmail=비밀번호 재설정 코드를 받을 실제 이메일(선택, 있으면 형식 검증). */
+    public record RegisterRequest(@Email @NotBlank String email, @NotBlank String password,
+                                  @Email String recoveryEmail) {}
     public record LoginRequest(@Email @NotBlank String email, @NotBlank String password) {}
 
     /** email=계정 이메일(&lt;아이디&gt;@wellhouse.app), contactEmail=인증코드를 받을 실제 이메일. */
@@ -27,7 +29,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public TokenResponse register(@Valid @RequestBody RegisterRequest req) {
-        return authService.register(req.email(), req.password());
+        return authService.register(req.email(), req.password(), req.recoveryEmail());
     }
 
     @PostMapping("/login")

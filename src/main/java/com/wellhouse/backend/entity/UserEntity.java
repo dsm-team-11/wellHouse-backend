@@ -23,6 +23,9 @@ public class UserEntity {
     @Column(unique = true)
     private String email;
 
+    /** 비밀번호 재설정 인증코드를 받을 실제 이메일(가입 시 수집). */
+    private String recoveryEmail;
+
     @JsonIgnore
     private String passwordHash;
 

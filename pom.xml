@@ -40,6 +40,13 @@
       <artifactId>spring-boot-starter-mail</artifactId>
     </dependency>
 
+    <!-- .env 파일 로드: 실행 디렉터리의 .env 를 환경변수처럼 주입(비밀번호를 git 밖에 보관) -->
+    <dependency>
+      <groupId>me.paulschwarz</groupId>
+      <artifactId>spring-dotenv</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+
     <!-- Persistence -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

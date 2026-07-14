@@ -23,13 +23,14 @@ public class AuthService {
     private final JwtService jwtService;
 
     @Transactional
-    public TokenResponse register(String email, String password) {
+    public TokenResponse register(String email, String password, String recoveryEmail) {
         if (userRepo.findByEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
         }
         String uid = UUID.randomUUID().toString();
         UserEntity user = UserEntity.builder()
                 .uid(uid).email(email)
+                .recoveryEmail(recoveryEmail == null ? null : recoveryEmail.trim())
                 .passwordHash(passwordEncoder.encode(password))
                 .build();
         userRepo.save(user);
