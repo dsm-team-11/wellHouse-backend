@@ -53,6 +53,10 @@ wellhouse:
   weather:
     regions: seoul,incheon,gyeonggi
     kma-service-key: ${KMA_SERVICE_KEY:}
+  ai:
+    # OpenAI(GPT). 키 없으면 AI 기능은 규칙 기반 기본 문구로 폴백.
+    openai-api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-4o-mini}
 
 logging:
   level:
