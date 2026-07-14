@@ -3,6 +3,19 @@ spring:
     name: wellhouse-backend
   profiles:
     active: dev
+  # 메일(SMTP): 비밀번호 재설정 인증코드 발송용. 기본값은 Gmail SMTP.
+  # 실제 발송하려면 WELLHOUSE_MAIL_ENABLED=true + MAIL_USERNAME/MAIL_PASSWORD(Gmail 앱 비밀번호) 설정.
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   jpa:
     open-in-view: false
     hibernate:
@@ -33,6 +46,10 @@ wellhouse:
     # 서비스 계정 JSON 경로. 없으면 푸시는 로그만 남기고 skip.
     enabled: ${WELLHOUSE_FCM_ENABLED:false}
     credentials-path: ${WELLHOUSE_FCM_CREDENTIALS:}
+  mail:
+    # true 여야 실제 SMTP 발송. false(기본)면 인증코드를 서버 로그로만 출력(개발 편의).
+    enabled: ${WELLHOUSE_MAIL_ENABLED:false}
+    from: ${WELLHOUSE_MAIL_FROM:no-reply@wellhouse.app}
   weather:
     regions: seoul,incheon,gyeonggi
     kma-service-key: ${KMA_SERVICE_KEY:}

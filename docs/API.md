@@ -12,8 +12,14 @@
 | --- | --- | --- | --- |
 | POST | `/api/auth/register` | `{email, password}` | `{uid, accessToken}` |
 | POST | `/api/auth/login` | `{email, password}` | `{uid, accessToken}` |
+| POST | `/api/auth/password/forgot` | `{email, contactEmail}` | `200` (계정 유무와 무관) |
+| POST | `/api/auth/password/reset` | `{email, code, newPassword}` | `200` / 코드 오류·만료 시 `400` |
 
 이후 모든 앱 요청 헤더: `Authorization: Bearer <accessToken>`.
+
+비밀번호 재설정: `email`=계정 이메일, `contactEmail`=인증코드를 받을 실제 이메일. 6자리 코드는 10분 유효.
+실제 SMTP 발송은 서버에 `WELLHOUSE_MAIL_ENABLED=true` + `MAIL_USERNAME`/`MAIL_PASSWORD` 설정 시 동작하며,
+미설정이면 코드는 서버 로그에만 출력된다(개발 편의).
 
 ## 2. 페어링 (앱 → 펌웨어 토큰 발급)
 
