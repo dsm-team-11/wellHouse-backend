@@ -88,6 +88,21 @@ public class DevController {
         return st;
     }
 
+    /**
+     * 시연 기기 소유권 해제 + 페어링 코드 복원(dev 전용). 앱이 진입 시 이걸 호출한 뒤
+     * 데모 계정으로 재페어링해, 기기가 항상 현재 시연 계정 소유가 되도록 한다.
+     * 예: POST /api/dev/demo/unpair/demo-device-01
+     */
+    @PostMapping("/demo/unpair/{deviceId}")
+    public void unpair(@PathVariable String deviceId) {
+        deviceRepo.findById(deviceId).ifPresent(d -> {
+            d.setOwnerUid(null);
+            d.setPairingCode("123456");
+            d.setPairingExpiresAt(Instant.now().plusSeconds(3600L * 24 * 365));
+            deviceRepo.save(d);
+        });
+    }
+
     /** 데모용 위험단계 → 대표 수위(cm). */
     private double cmFor(RiskLevel lv) {
         return switch (lv) {
