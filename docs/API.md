@@ -42,6 +42,7 @@
 | GET | `/api/notifications` | 알림함 |
 | POST | `/api/notifications/{id}/read` | 읽음 처리 |
 | GET/PUT | `/api/users/me`, `/api/users/me/home` | 내 정보/집 정보(`home` 바디에 `address` 포함 시 기상청 격자 자동 계산) |
+| GET/PUT | `/api/users/me/emergency-contacts` | 비상 연락망 목록 조회/전체교체 → `[{name, relation, phone}]` |
 | POST/DELETE | `/api/users/me/fcm-token` | FCM 토큰 등록/해제 `{token}` |
 | GET | `/api/weather/me` | 내 주소 기준 현재 기상 → `{region, rainMmH, forecastMmH, advisory, hazardRank, hazardLabel, live, updatedAt}` |
 
