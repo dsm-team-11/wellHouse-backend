@@ -41,4 +41,9 @@ public class UserEntity {
     private Double homeLat;
     private Double homeLng;
     private Integer windowCount;
+
+    // 회원가입 시 입력한 주소 + 기상청 격자(날씨 조회용)
+    private String address;
+    private Integer gridNx;
+    private Integer gridNy;
 }

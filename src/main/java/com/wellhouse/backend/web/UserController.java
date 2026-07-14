@@ -2,6 +2,7 @@ package com.wellhouse.backend.web;
 
 import com.wellhouse.backend.entity.UserEntity;
 import com.wellhouse.backend.repository.UserRepository;
+import com.wellhouse.backend.service.weather.AddressGrid;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,8 @@ public class UserController {
     private final UserRepository userRepo;
 
     public record HomeReq(Double homeAreaM2, Boolean isSemiBasement,
-                          Double homeLat, Double homeLng, Integer windowCount) {}
+                          Double homeLat, Double homeLng, Integer windowCount,
+                          String address) {}
     public record FcmTokenReq(@NotBlank String token) {}
 
     @GetMapping
@@ -35,6 +37,13 @@ public class UserController {
         u.setHomeLat(req.homeLat());
         u.setHomeLng(req.homeLng());
         u.setWindowCount(req.windowCount());
+        // 주소가 오면 기상청 격자를 함께 계산해 저장(날씨 조회에 사용).
+        if (req.address() != null && !req.address().isBlank()) {
+            AddressGrid.Location loc = AddressGrid.fromAddress(req.address());
+            u.setAddress(req.address().trim());
+            u.setGridNx(loc.cell().nx());
+            u.setGridNy(loc.cell().ny());
+        }
         return userRepo.save(u);
     }
 
