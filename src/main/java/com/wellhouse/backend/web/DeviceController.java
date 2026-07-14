@@ -5,6 +5,7 @@ import com.wellhouse.backend.entity.*;
 import com.wellhouse.backend.repository.DeviceRepository;
 import com.wellhouse.backend.repository.DeviceStateRepository;
 import com.wellhouse.backend.repository.EventLogRepository;
+import com.wellhouse.backend.repository.WaterSampleRepository;
 import com.wellhouse.backend.service.CommandService;
 import com.wellhouse.backend.service.RiskEvaluationService;
 import jakarta.validation.Valid;
@@ -15,6 +16,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 /** 앱용 기기 조회/명령. 소유자만 접근. */
@@ -26,6 +29,7 @@ public class DeviceController {
     private final DeviceRepository deviceRepo;
     private final DeviceStateRepository stateRepo;
     private final EventLogRepository eventRepo;
+    private final WaterSampleRepository waterSampleRepo;
     private final CommandService commandService;
     private final RiskEvaluationService riskService;
 
@@ -53,6 +57,16 @@ public class DeviceController {
     public List<EventLogEntity> events(Authentication auth, @PathVariable String id) {
         assertOwner(auth, id);
         return eventRepo.findTop50ByDeviceIdOrderByTsDesc(id);
+    }
+
+    /** 최근 24시간 수위 샘플(시간대별 그래프용). 오래된→최신 순으로 정렬해 반환. */
+    @GetMapping("/{id}/water-samples")
+    public List<WaterSampleEntity> waterSamples(Authentication auth, @PathVariable String id) {
+        assertOwner(auth, id);
+        List<WaterSampleEntity> list =
+                waterSampleRepo.findByDeviceIdAndTsGreaterThanEqual(id, Instant.now().minus(Duration.ofHours(24)));
+        list.sort(java.util.Comparator.comparing(WaterSampleEntity::getTs));
+        return list;
     }
 
     @GetMapping("/{id}/commands")

@@ -1,6 +1,9 @@
 package com.wellhouse.backend.web;
 
+import com.wellhouse.backend.entity.DeviceEntity;
 import com.wellhouse.backend.entity.UserEntity;
+import com.wellhouse.backend.repository.DeviceRepository;
+import com.wellhouse.backend.repository.NotificationRepository;
 import com.wellhouse.backend.repository.UserRepository;
 import com.wellhouse.backend.service.weather.AddressGrid;
 import jakarta.validation.Valid;
@@ -8,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -18,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserController {
 
     private final UserRepository userRepo;
+    private final DeviceRepository deviceRepo;
+    private final NotificationRepository notificationRepo;
 
     public record HomeReq(Double homeAreaM2, Boolean isSemiBasement,
                           Double homeLat, Double homeLng, Integer windowCount,
@@ -59,6 +65,21 @@ public class UserController {
             u.getWindowSizes().addAll(req.windowSizes());
         }
         return userRepo.save(u);
+    }
+
+    /** 회원 탈퇴: 소유 기기 페어링 해제 + 알림 삭제 + 계정 삭제(복구 불가). */
+    @DeleteMapping
+    @Transactional
+    public void deleteMe(Authentication auth) {
+        String uid = auth.getName();
+        UserEntity u = load(auth);
+        // 기기는 물리/공유 자원이라 삭제하지 않고 소유만 해제(다시 페어링 가능).
+        for (DeviceEntity d : deviceRepo.findByOwnerUid(uid)) {
+            d.setOwnerUid(null);
+            deviceRepo.save(d);
+        }
+        notificationRepo.deleteByUid(uid);
+        userRepo.delete(u);
     }
 
     @PostMapping("/fcm-token")

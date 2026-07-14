@@ -4,9 +4,11 @@ import com.wellhouse.backend.domain.risk.RiskLevel;
 import com.wellhouse.backend.entity.DeviceEntity;
 import com.wellhouse.backend.entity.DeviceStateEntity;
 import com.wellhouse.backend.entity.NotificationEntity;
+import com.wellhouse.backend.entity.WaterSampleEntity;
 import com.wellhouse.backend.repository.DeviceRepository;
 import com.wellhouse.backend.repository.DeviceStateRepository;
 import com.wellhouse.backend.repository.NotificationRepository;
+import com.wellhouse.backend.repository.WaterSampleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +28,7 @@ public class DevController {
     private final DeviceStateRepository stateRepo;
     private final DeviceRepository deviceRepo;
     private final NotificationRepository notifRepo;
+    private final WaterSampleRepository waterSampleRepo;
 
     /**
      * 기기 상태를 지정 위험단계로 설정하고, 소유자에게 상황 알림을 생성한다(데모).
@@ -41,6 +44,10 @@ public class DevController {
         st.setUpdatedAt(Instant.now());
         stateRepo.save(st);
 
+        // 데모 수위 샘플 적재 — 모니터링 수위 그래프가 실데이터로 그려지도록.
+        waterSampleRepo.save(WaterSampleEntity.builder()
+                .deviceId(deviceId).levelCm(cmFor(lv)).ts(Instant.now()).build());
+
         // 소유자 알림함에 상황 알림 적재(앱 알림 화면이 실제 데이터로 채워지도록).
         deviceRepo.findById(deviceId)
                 .map(DeviceEntity::getOwnerUid)
@@ -53,6 +60,16 @@ public class DevController {
                         .createdAt(Instant.now())
                         .build()));
         return st;
+    }
+
+    /** 데모용 위험단계 → 대표 수위(cm). */
+    private double cmFor(RiskLevel lv) {
+        return switch (lv) {
+            case GOOD -> 2;
+            case CAUTION -> 8;
+            case WARNING -> 16;
+            case DANGER -> 32;
+        };
     }
 
     private String titleFor(RiskLevel lv) {
