@@ -38,30 +38,30 @@ public class DevDataLoader implements CommandLineRunner {
             }
         }
 
+        // 데모 기기: 매 부팅마다 "페어링 가능 + 미소유" 상태로 리셋(개발 편의).
+        // → 어느 계정으로 로그인해도 앱이 자동 페어링해 서버 데이터를 볼 수 있다.
         String demoId = "demo-device-01";
-        if (!deviceRepo.existsById(demoId)) {
-            deviceRepo.save(DeviceEntity.builder()
-                    .deviceId(demoId)
-                    .region("seoul")
-                    .lat(37.5665).lng(126.9780)
-                    .online(false)
-                    .mode("normal")
-                    .pairingCode("123456")
-                    .pairingExpiresAt(Instant.now().plusSeconds(3600 * 24 * 365))
-                    .build());
-            log.info("데모 기기 생성: {} (pairingCode=123456)", demoId);
-        }
+        DeviceEntity demo = deviceRepo.findById(demoId)
+                .orElseGet(() -> DeviceEntity.builder().deviceId(demoId).build());
+        demo.setRegion("seoul");
+        demo.setLat(37.5665);
+        demo.setLng(126.9780);
+        demo.setOnline(false);
+        demo.setMode("normal");
+        demo.setOwnerUid(null);                 // 소유권 해제(재페어링 가능)
+        demo.setPairingCode("123456");          // 페어링 코드 복원
+        demo.setPairingExpiresAt(Instant.now().plusSeconds(3600L * 24 * 365));
+        deviceRepo.save(demo);
+        log.info("데모 기기 리셋: {} (pairingCode=123456, owner 해제)", demoId);
 
-        // 앱 데모: 페어링만 하면 새로고침 시 서버발 상태가 바로 보이도록 초기 상태(경고) 시드.
-        if (!stateRepo.existsById(demoId)) {
-            stateRepo.save(DeviceStateEntity.builder()
-                    .deviceId(demoId)
-                    .level(RiskLevel.WARNING)
-                    .rawLevel(RiskLevel.WARNING)
-                    .riseCmPerMin(0.0)
-                    .updatedAt(Instant.now())
-                    .build());
-            log.info("데모 기기 초기 상태 시드: {} level=WARNING", demoId);
-        }
+        // 앱 데모: 페어링 즉시 새로고침 시 서버발 상태가 보이도록 상태(경고) 보장.
+        DeviceStateEntity st = stateRepo.findById(demoId)
+                .orElseGet(() -> DeviceStateEntity.builder().deviceId(demoId).build());
+        st.setLevel(RiskLevel.WARNING);
+        st.setRawLevel(RiskLevel.WARNING);
+        st.setRiseCmPerMin(0.0);
+        st.setUpdatedAt(Instant.now());
+        stateRepo.save(st);
+        log.info("데모 기기 상태 시드: {} level=WARNING", demoId);
     }
 }
