@@ -41,6 +41,13 @@ public class DevController {
                 .orElseGet(() -> DeviceStateEntity.builder().deviceId(deviceId).build());
         st.setLevel(lv);
         st.setRawLevel(lv);
+        // 사후 리포트 트리거(실제 파이프라인과 동일): 경고↑ 도달 기록 → 양호 복귀 시 대기 플래그 ON.
+        boolean episodeActive = Boolean.TRUE.equals(st.getFloodEpisodeActive()) || lv.rank >= RiskLevel.WARNING.rank;
+        if (lv == RiskLevel.GOOD && episodeActive) {
+            st.setReportPending(true);
+            episodeActive = false;
+        }
+        st.setFloodEpisodeActive(episodeActive);
         st.setUpdatedAt(Instant.now());
         stateRepo.save(st);
 
@@ -79,6 +86,9 @@ public class DevController {
         st.setLevel(RiskLevel.GOOD);
         st.setRawLevel(RiskLevel.GOOD);
         st.setRiseCmPerMin(0.0);
+        // 시연 시작점: 리포트 대기/에피소드 플래그 초기화(이전 시연 잔상 제거).
+        st.setReportPending(false);
+        st.setFloodEpisodeActive(false);
         st.setUpdatedAt(Instant.now());
         stateRepo.save(st);
 

@@ -71,6 +71,17 @@ public class RiskEvaluationService {
         StateMachine.Transition transition = StateMachine.resolve(
                 prevLevel, prevCandidate, risk.level(), System.currentTimeMillis(), risk.advisoryFloor());
 
+        // 3-b) 사후 리포트 트리거(서버 권위): 경고(2)↑까지 갔다가 양호로 복귀하면 reportPending=true.
+        //      플래그는 상태 행에 저장되므로 앱을 껐다 켜도 유지된다(앱이 ack 로 해제).
+        boolean prevEpisode = prevState != null && Boolean.TRUE.equals(prevState.getFloodEpisodeActive());
+        boolean prevPending = prevState != null && Boolean.TRUE.equals(prevState.getReportPending());
+        boolean floodEpisodeActive = prevEpisode || transition.level().rank >= RiskLevel.WARNING.rank;
+        boolean reportPending = prevPending;
+        if (transition.level() == RiskLevel.GOOD && floodEpisodeActive) {
+            reportPending = true;
+            floodEpisodeActive = false;
+        }
+
         // 4) 골든타임 (바닥 면적 A 를 알면 유입 유량 Q=v·A 도 함께 역산)
         double targetCm = device != null && device.getGoldenTargetCm() != null
                 ? device.getGoldenTargetCm() : Thresholds.DEFAULT_GOLDEN_TARGET_CM;
@@ -84,6 +95,8 @@ public class RiskEvaluationService {
                 .rawLevel(risk.level())
                 .candidateSince(transition.candidateSince())
                 .riseCmPerMin(riseCmPerMin)
+                .reportPending(reportPending)
+                .floodEpisodeActive(floodEpisodeActive)
                 .contributorsJson(writeJson(risk.contributors()))
                 .bumpsJson(writeJson(risk.bumps()))
                 .updatedAt(Instant.now())
@@ -190,6 +203,7 @@ public class RiskEvaluationService {
         m.put("color", s.getLevel().color);
         m.put("raw", s.getRawLevel() != null ? s.getRawLevel().rank : null);
         m.put("riseCmPerMin", s.getRiseCmPerMin());
+        m.put("reportPending", Boolean.TRUE.equals(s.getReportPending()));
         m.put("updatedAt", s.getUpdatedAt() != null ? s.getUpdatedAt().toEpochMilli() : null);
         return m;
     }

@@ -14,7 +14,9 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
 
-# 개발에선 MQTT 브로커 없이 부팅 (펌웨어 연동은 REST 폴백 사용 가능)
+# 개발에선 기본적으로 MQTT 브로커 없이 부팅 (펌웨어 연동은 REST 폴백 사용 가능).
+# 실제 브로커(Mosquitto 등)로 시연하려면 WELLHOUSE_MQTT_ENABLED=true 로 켠다.
 wellhouse:
   mqtt:
-    enabled: false
+    enabled: ${WELLHOUSE_MQTT_ENABLED:false}
+    broker-url: ${WELLHOUSE_MQTT_URL:tcp://localhost:1883}

@@ -82,6 +82,16 @@ public class DeviceController {
         return commandService.issue(id, req.target(), auth.getName(), "manual");
     }
 
+    /** 사후 리포트 표시 후 대기 플래그 해제(앱이 리포트를 띄운 뒤 1회 호출). */
+    @PostMapping("/{id}/report/ack")
+    public void ackReport(Authentication auth, @PathVariable String id) {
+        assertOwner(auth, id);
+        stateRepo.findById(id).ifPresent(st -> {
+            st.setReportPending(false);
+            stateRepo.save(st);
+        });
+    }
+
     private void assertOwner(Authentication auth, String deviceId) {
         DeviceEntity d = deviceRepo.findById(deviceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "등록되지 않은 기기"));

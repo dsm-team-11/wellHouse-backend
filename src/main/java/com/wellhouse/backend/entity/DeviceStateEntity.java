@@ -33,6 +33,12 @@ public class DeviceStateEntity {
     private Long candidateSince;  // 하향 후보 유지 시작(ms), null이면 없음
     private Double riseCmPerMin;
 
+    /** 경고(2)↑까지 올랐다가 양호로 복귀 → 사후 리포트 대기. 앱이 리포트를 띄운 뒤 ack 로 해제. */
+    private Boolean reportPending;
+
+    /** 현재 침수 에피소드에서 경고(2) 이상 도달했는지(리포트 트리거 판정용). */
+    private Boolean floodEpisodeActive;
+
     @Column(length = 2000)
     private String contributorsJson;
 
