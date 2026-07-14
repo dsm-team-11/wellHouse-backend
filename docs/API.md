@@ -47,6 +47,17 @@
 
 > 날씨는 기상청 초단기실황/예보(공공데이터포털)에서 온다. `KMA_SERVICE_KEY`(일반 인증키 Decoding) 환경변수가 있어야 실데이터(`live=true`)를 받고, 없으면 강수 0으로 안전 동작한다. 회원가입 주소의 시/도·시군구를 격자(nx,ny)로 변환해 조회하며, 격자별 10분 캐시.
 
+### 3-1. AI (GPT)
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/api/ai/home-message` | 홈 2줄 맞춤 문구 → `{line1, line2, ai}` |
+| GET | `/api/ai/checklist` | 상황 맞춤 체크리스트(우선순위) → `{items:[...], ai}` |
+| GET | `/api/ai/report/{deviceId}` | 침수 후 사후 리포트(마크다운) → `{markdown, ai}` |
+| GET | `/api/ai/report/{deviceId}/improvements` | 사고 기반 AI 개선 방안 → `{markdown, ai}` |
+
+> AI 기능은 OpenAI GPT를 사용한다. `OPENAI_API_KEY` 환경변수가 있으면 GPT 생성(`ai=true`), 없으면 규칙 기반 기본 문구로 폴백(`ai=false`)한다. 모델은 `OPENAI_MODEL`(기본 `gpt-4o-mini`). 사용자 주소·집정보·기기 이벤트를 컨텍스트로 조합해 생성한다.
+
 ## 4. 앱 실시간 (WebSocket STOMP)
 
 - 접속: `ws://<host>:8080/ws`
