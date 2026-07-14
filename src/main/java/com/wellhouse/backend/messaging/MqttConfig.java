@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 import java.nio.charset.StandardCharsets;
 
@@ -35,8 +36,11 @@ public class MqttConfig {
     @Value("${wellhouse.mqtt.password:}")
     private String password;
 
+    // router 는 콜백(messageArrived)에서만 쓰이고 빈 생성 시점엔 필요 없다.
+    // @Lazy 로 주입해 mqttClient → router → commandService → mqttDeviceCommander → mqttClient
+    // 순환 의존성을 끊는다.
     @Bean
-    public MqttClient mqttClient(MqttMessageRouter router) throws MqttException {
+    public MqttClient mqttClient(@Lazy MqttMessageRouter router) throws MqttException {
         MqttClient client = new MqttClient(brokerUrl, clientId, new MemoryPersistence());
         MqttConnectOptions opts = new MqttConnectOptions();
         opts.setAutomaticReconnect(true);

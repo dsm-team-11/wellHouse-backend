@@ -31,7 +31,7 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/ws/**", "/h2-console/**", "/actuator/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/dev/**", "/ws/**", "/h2-console/**", "/actuator/**").permitAll()
                         .requestMatchers("/api/firmware/**").hasRole("DEVICE")
                         .anyRequest().authenticated())
                 // H2 콘솔 iframe 허용
