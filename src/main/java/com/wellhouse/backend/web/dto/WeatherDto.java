@@ -4,12 +4,15 @@ import com.wellhouse.backend.domain.risk.Advisory;
 import com.wellhouse.backend.domain.risk.Thresholds;
 import com.wellhouse.backend.service.weather.WeatherSnapshot;
 
+import java.util.List;
+
 /**
  * 앱 홈 화면용 기상 요약.
  *
  * @param region      표시 지역명(예: "대전 유성구")
  * @param rainMmH     현재 1시간 강수량(mm)
- * @param forecastMmH 다음 시각 예상 강수량(mm)
+ * @param forecastMmH 다음 시각(≈+1h) 예상 강수량(mm)
+ * @param forecast    +1h·+2h·+3h 시간대별 예상 강수량(mm), 이른 시각 순
  * @param advisory    기상특보(NONE|WATCH|WARNING)
  * @param hazardRank  기상위험 단계 0=양호·1=주의·2=경고·3=위험
  * @param hazardLabel 기상위험 라벨
@@ -20,6 +23,7 @@ public record WeatherDto(
         String region,
         double rainMmH,
         double forecastMmH,
+        List<Double> forecast,
         String advisory,
         int hazardRank,
         String hazardLabel,
@@ -31,7 +35,7 @@ public record WeatherDto(
 
     public static WeatherDto of(String region, WeatherSnapshot w, boolean live, long updatedAt) {
         int rank = hazardRank(w);
-        return new WeatherDto(region, w.rainMmH(), w.forecastMmH(),
+        return new WeatherDto(region, w.rainMmH(), w.forecastMmH(), w.hourlyForecastMm(),
                 w.advisory().name(), rank, LABELS[rank], live, updatedAt);
     }
 

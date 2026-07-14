@@ -9,6 +9,9 @@ import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,10 +54,12 @@ public class KmaWeatherClient {
         if (!enabled()) return WeatherSnapshot.EMPTY;
         try {
             double rainNow = fetchNowcastRain(cell);
-            double rainForecast = fetchForecastRain(cell);
+            // +1h·+2h·+3h 시간대별 예보. 첫 값은 forecastMmH(하위 호환)로도 노출.
+            List<Double> hourly = fetchHourlyForecast(cell, 3);
+            double rainForecast = hourly.isEmpty() ? 0 : hourly.get(0);
             // 특보(호우주의보/경보)는 별도 서비스라 여기선 NONE. 실황 강수량으로 위험도가 이미 상승한다.
             // 3시간 누적은 실황만으론 알 수 없어 현재 1시간 강수량을 보수적 하한으로 사용한다.
-            return new WeatherSnapshot(rainNow, rainNow, Advisory.NONE, rainForecast);
+            return new WeatherSnapshot(rainNow, rainNow, Advisory.NONE, rainForecast, hourly);
         } catch (Exception e) {
             log.warn("KMA fetch 실패 nx={} ny={}: {}", cell.nx(), cell.ny(), e.toString());
             return WeatherSnapshot.EMPTY;
@@ -75,23 +80,27 @@ public class KmaWeatherClient {
         return 0;
     }
 
-    /** 초단기예보 RN1: 가장 이른 예보 시각의 예상 강수량(mm). 매시 30분 발표·약 45분 후 제공. */
-    private double fetchForecastRain(KmaGrid.Cell cell) {
+    /**
+     * 초단기예보 RN1: 이른 시각 순으로 {@code hours}개의 시간대별 예상 강수량(mm).
+     * 매시 30분 발표·약 45분 후 제공. 초단기예보는 최대 6시간까지 시각별로 제공된다.
+     */
+    private List<Double> fetchHourlyForecast(KmaGrid.Cell cell, int hours) {
         LocalDateTime t = LocalDateTime.now();
         if (t.getMinute() < 45) t = t.minusHours(1);
         JsonNode items = call("/getUltraSrtFcst", t.format(DATE), t.format(HOUR) + "30", cell, 300);
-        if (items == null) return 0;
-        String earliestTime = null;
-        double rain = 0;
+        if (items == null) return List.of();
+        // fcstTime(HHmm) → RN1 mm. TreeMap 으로 시각 오름차순 정렬.
+        TreeMap<String, Double> byTime = new TreeMap<>();
         for (JsonNode item : items) {
             if (!"RN1".equals(item.path("category").asText())) continue;
-            String fcstTime = item.path("fcstTime").asText();
-            if (earliestTime == null || fcstTime.compareTo(earliestTime) < 0) {
-                earliestTime = fcstTime;
-                rain = parseRain(item.path("fcstValue").asText());
-            }
+            byTime.put(item.path("fcstTime").asText(), parseRain(item.path("fcstValue").asText()));
         }
-        return rain;
+        List<Double> out = new ArrayList<>(hours);
+        for (Double v : byTime.values()) {
+            out.add(v);
+            if (out.size() >= hours) break;
+        }
+        return out;
     }
 
     /** 공통 호출 → items 배열 노드 반환(없으면 null). */
