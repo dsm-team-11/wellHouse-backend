@@ -63,4 +63,10 @@ public class UserEntity {
     @Column(name = "size")
     @Builder.Default
     private java.util.List<String> windowSizes = new java.util.ArrayList<>();
+
+    // 비상 연락망(사용자별 목록) — 마이페이지에서 추가/수정/삭제, 기기 간 동기화용.
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_emergency_contacts", joinColumns = @JoinColumn(name = "uid"))
+    @Builder.Default
+    private java.util.List<EmergencyContact> emergencyContacts = new java.util.ArrayList<>();
 }

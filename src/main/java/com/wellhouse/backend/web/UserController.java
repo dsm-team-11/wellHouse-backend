@@ -1,6 +1,7 @@
 package com.wellhouse.backend.web;
 
 import com.wellhouse.backend.entity.DeviceEntity;
+import com.wellhouse.backend.entity.EmergencyContact;
 import com.wellhouse.backend.entity.UserEntity;
 import com.wellhouse.backend.repository.DeviceRepository;
 import com.wellhouse.backend.repository.NotificationRepository;
@@ -32,6 +33,7 @@ public class UserController {
                           Integer floodHistoryLevel, String emergencyName, String emergencyPhone,
                           java.util.List<String> windowSizes) {}
     public record FcmTokenReq(@NotBlank String token) {}
+    public record ContactReq(String name, String relation, String phone) {}
 
     @GetMapping
     public UserEntity me(Authentication auth) {
@@ -80,6 +82,27 @@ public class UserController {
         }
         notificationRepo.deleteByUid(uid);
         userRepo.delete(u);
+    }
+
+    /** 내 비상 연락망 목록 조회. */
+    @GetMapping("/emergency-contacts")
+    public java.util.List<EmergencyContact> emergencyContacts(Authentication auth) {
+        return load(auth).getEmergencyContacts();
+    }
+
+    /** 비상 연락망 목록 전체 교체(앱이 추가/수정/삭제 후 전체 목록을 보낸다). */
+    @PutMapping("/emergency-contacts")
+    public java.util.List<EmergencyContact> updateEmergencyContacts(
+            Authentication auth, @RequestBody java.util.List<ContactReq> body) {
+        UserEntity u = load(auth);
+        u.getEmergencyContacts().clear();
+        if (body != null) {
+            for (ContactReq c : body) {
+                u.getEmergencyContacts().add(new EmergencyContact(c.name(), c.relation(), c.phone()));
+            }
+        }
+        userRepo.save(u);
+        return u.getEmergencyContacts();
     }
 
     @PostMapping("/fcm-token")
