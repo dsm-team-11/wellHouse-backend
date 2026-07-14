@@ -29,6 +29,7 @@ public class RiskEvaluationService {
     private final DeviceStateRepository stateRepo;
     private final WeatherRepository weatherRepo;
     private final EventLogRepository eventRepo;
+    private final UserRepository userRepo;
 
     private final CommandService commandService;
     private final EmergencyService emergencyService;
@@ -70,10 +71,11 @@ public class RiskEvaluationService {
         StateMachine.Transition transition = StateMachine.resolve(
                 prevLevel, prevCandidate, risk.level(), System.currentTimeMillis(), risk.advisoryFloor());
 
-        // 4) 골든타임
+        // 4) 골든타임 (바닥 면적 A 를 알면 유입 유량 Q=v·A 도 함께 역산)
         double targetCm = device != null && device.getGoldenTargetCm() != null
                 ? device.getGoldenTargetCm() : Thresholds.DEFAULT_GOLDEN_TARGET_CM;
-        GoldenTime.Result golden = GoldenTime.compute(levelCm, riseCmPerMin, targetCm);
+        double floorAreaM2 = floorAreaM2(device);
+        GoldenTime.Result golden = GoldenTime.compute(levelCm, riseCmPerMin, targetCm, floorAreaM2);
 
         // 5) 상태 저장 + 실시간 송출
         DeviceStateEntity state = DeviceStateEntity.builder()
@@ -169,7 +171,16 @@ public class RiskEvaluationService {
         DeviceEntity dev = deviceRepo.findById(deviceId).orElse(null);
         double target = dev != null && dev.getGoldenTargetCm() != null
                 ? dev.getGoldenTargetCm() : Thresholds.DEFAULT_GOLDEN_TARGET_CM;
-        return GoldenTime.compute(sample.getLevelCm(), rise, target);
+        return GoldenTime.compute(sample.getLevelCm(), rise, target, floorAreaM2(dev));
+    }
+
+    /** 기기 소유자의 집 바닥 면적 A(m²). 미상이면 0(=유입 유량 계산 안 함). */
+    private double floorAreaM2(DeviceEntity device) {
+        if (device == null || device.getOwnerUid() == null) return 0;
+        return userRepo.findById(device.getOwnerUid())
+                .map(UserEntity::getHomeAreaM2)
+                .filter(a -> a != null && a > 0)
+                .orElse(0.0);
     }
 
     private Map<String, Object> stateView(DeviceStateEntity s) {

@@ -75,6 +75,34 @@ class RiskDomainTest {
     }
 
     @Test
+    @DisplayName("수위 상승 속도: v = Q / A, Q = v · A 역산")
+    void riseSpeedFromInflow() {
+        // Q=0.02 m³/s, A=10 m² → v = 0.002 m/s
+        assertEquals(0.002, GoldenTime.riseSpeedFromInflow(0.02, 10), 1e-9);
+        // 면적 0 이하 → 상승 없음
+        assertEquals(0.0, GoldenTime.riseSpeedFromInflow(0.02, 0), 1e-9);
+        // 역산 왕복: Q = v · A
+        assertEquals(0.02, GoldenTime.inflowFromRiseSpeed(0.002, 10), 1e-9);
+
+        // t초 뒤 예상 수위: h(t) = h0 + (Q/A)·t
+        // h0=0.02m, v=0.002m/s, t=60s → 0.02 + 0.12 = 0.14m
+        assertEquals(0.14, GoldenTime.projectedLevelM(0.02, 0.02, 10, 60), 1e-9);
+    }
+
+    @Test
+    @DisplayName("골든타임 4-arg: 면적 주면 유입 유량 Q 역산")
+    void goldenTimeWithArea() {
+        // 2cm/min = 0.000333.. m/s, A=10 m² → Q = v·A
+        GoldenTime.Result g = GoldenTime.compute(2, 2, 10, 10);
+        assertEquals(240, g.primary().seconds());            // 골든타임은 A와 무관
+        assertEquals(g.riseSpeedMPerS() * 10, g.inflowM3PerS(), 1e-12);
+        assertTrue(g.inflowM3PerS() > 0);
+
+        // 면적 미상(기본 3-arg) → Q=0
+        assertEquals(0.0, GoldenTime.compute(2, 2, 10).inflowM3PerS(), 1e-12);
+    }
+
+    @Test
     @DisplayName("상태머신: 승격 즉시, 강등은 안정시간 필요")
     void hysteresis() {
         long t0 = 1_000_000L;

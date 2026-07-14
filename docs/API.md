@@ -52,7 +52,7 @@
 - 접속: `ws://<host>:8080/ws`
 - 구독:
   - `/topic/devices/{deviceId}/state`  → `{level,label,color,raw,riseCmPerMin,updatedAt}`
-  - `/topic/devices/{deviceId}/goldenTime` → `{riseSpeedMPerS, primary:{targetCm,seconds,reachable}, bodyEta:[...]}`
+  - `/topic/devices/{deviceId}/goldenTime` → `{riseSpeedMPerS, inflowM3PerS, primary:{targetCm,seconds,reachable}, bodyEta:[...]}`
   - `/topic/devices/{deviceId}/emergency` → `{status,countdownSec,startedAt}`
 
 ---

@@ -33,12 +33,18 @@
 ## 골든타임 (`domain/risk/GoldenTime.java`)
 
 ```
-v = 상승속도(m/s)          # 실측 cm/min 을 환산
+v = 상승속도(m/s)          # 실측 cm/min 을 환산, 또는 유량 모델 v = Q / A
 T = (h_target - h_current) / v
 ```
 
 - 상승하지 않으면(v≤0) `reachable:false`, `seconds:null`.
 - 인체 기준 ETA 동시 제공: 무릎0.4 · 허리0.9 · 가슴1.2 · 턱1.5 · 코1.6 (m).
+
+### 유입 유량 모델 (`v = Q / A`)
+
+- `Q` : 유입 유량(m³/s), `A` : 방 바닥 면적(m²) → 상승속도 `v = Q / A`, 수위 `h(t) = h0 + (Q/A)·t`.
+- 본 시스템은 유량 센서가 없어, 실측 상승속도 `v` 와 집 면적 `A`(회원가입 '평'→m², `users.homeAreaM2`)로
+  유입 유량을 **역산**한다: `Q = v · A`. 결과의 `inflowM3PerS` 로 노출(면적 미상이면 0).
 
 ## 자동 조치 (승격 시)
 
