@@ -1,0 +1,18 @@
+# Maven / Java
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Secrets
+*firebase*service*account*.json
+.env
+
+# Tooling
+.omc/

@@ -1,0 +1,11 @@
+# 운영 프로파일: PostgreSQL
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/wellhouse}
+    username: ${DB_USER:wellhouse}
+    password: ${DB_PASS:wellhouse}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
