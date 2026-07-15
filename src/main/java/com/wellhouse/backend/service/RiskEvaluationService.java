@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 수위 입력 처리 파이프라인 (Firebase의 onWaterWrite 대응).
@@ -31,6 +33,11 @@ public class RiskEvaluationService {
     private final EventLogRepository eventRepo;
     private final UserRepository userRepo;
 
+    /** 수위 중앙값 창(초): 짧게 잡아 임계값 도달 지연을 줄이고, median으로 순간 스파이크를 제거. */
+    private static final long LEVEL_WINDOW_SEC = 8;
+    /** 상승률 창(초): 길게 잡아 2초 간격 노이즈에도 기울기(cm/분)를 안정화. */
+    private static final long RISE_WINDOW_SEC = 90;
+
     private final CommandService commandService;
     private final EmergencyService emergencyService;
     private final FcmService fcm;
@@ -40,23 +47,37 @@ public class RiskEvaluationService {
     /** 새 수위 샘플 처리. */
     @Transactional
     public void onWaterReading(String deviceId, double levelCm, Instant ts) {
-        // 1) 상승 속도 (직전 샘플 기준) — 저장 전에 조회
-        double riseCmPerMin = 0;
-        Optional<WaterSampleEntity> prev = waterRepo.findTop1ByDeviceIdOrderByTsDesc(deviceId);
-        if (prev.isPresent()) {
-            double dMin = (ts.toEpochMilli() - prev.get().getTs().toEpochMilli()) / 60000.0;
-            if (dMin > 0) riseCmPerMin = (levelCm - prev.get().getLevelCm()) / dMin;
-        }
+        // 1) 노이즈 완화(센서 2초 간격 ±1~2cm 흔들림):
+        //    - 승격 판정 수위 = 최근 LEVEL_WINDOW 구간 '중앙값'(스파이크 제거, 낮은 지연)
+        //    - 상승 속도    = 최근 RISE_WINDOW 구간 '최소자승 기울기'(cm/분, 안정)
+        List<WaterSampleEntity> riseWin =
+                waterRepo.findByDeviceIdAndTsGreaterThanEqual(deviceId, ts.minusSeconds(RISE_WINDOW_SEC));
         waterRepo.save(WaterSampleEntity.builder().deviceId(deviceId).levelCm(levelCm).ts(ts).build());
+
+        long levelCutMs = ts.minusSeconds(LEVEL_WINDOW_SEC).toEpochMilli();
+        List<double[]> risePts = new ArrayList<>(riseWin.size() + 1);
+        List<Double> levelWin = new ArrayList<>();
+        for (WaterSampleEntity s : riseWin) {
+            risePts.add(new double[]{s.getTs().toEpochMilli() / 1000.0, s.getLevelCm()});
+            if (s.getTs().toEpochMilli() >= levelCutMs) levelWin.add(s.getLevelCm());
+        }
+        risePts.add(new double[]{ts.toEpochMilli() / 1000.0, levelCm});
+        levelWin.add(levelCm);
+
+        double smoothedLevelCm = median(levelWin, levelCm);
+        double riseCmPerMin = slopeCmPerMin(risePts);
 
         // 2) 기기 메타 + 기상 결합
         DeviceEntity device = deviceRepo.findById(deviceId).orElse(null);
         WeatherEntity weather = (device != null && device.getRegion() != null)
                 ? weatherRepo.findById(device.getRegion()).orElse(null) : null;
 
+        // 색/단계 판정은 '절대 수위(median)'와 기상만으로 한다. 상승속도는 2초 간격 센서에선
+        // 노이즈가 커서 위험도 승격에 쓰면 오탐(평지에서도 위험)이 생기므로 제외하고,
+        // 아래 골든타임·"N cm 상승 중" 표시에만 riseCmPerMin(스무딩값)을 사용한다.
         RiskInputs inputs = RiskInputs.builder()
-                .levelCm(levelCm)
-                .riseCmPerMin(riseCmPerMin)
+                .levelCm(smoothedLevelCm)
+                .riseCmPerMin(0)
                 .rainMmPerH(weather != null ? weather.getRainMmH() : 0)
                 .cumulativeRainMm(weather != null ? weather.getCumulative3hMm() : 0)
                 .advisory(weather != null && weather.getAdvisory() != null ? weather.getAdvisory() : Advisory.NONE)
@@ -86,7 +107,7 @@ public class RiskEvaluationService {
         double targetCm = device != null && device.getGoldenTargetCm() != null
                 ? device.getGoldenTargetCm() : Thresholds.DEFAULT_GOLDEN_TARGET_CM;
         double floorAreaM2 = floorAreaM2(device);
-        GoldenTime.Result golden = GoldenTime.compute(levelCm, riseCmPerMin, targetCm, floorAreaM2);
+        GoldenTime.Result golden = GoldenTime.compute(smoothedLevelCm, riseCmPerMin, targetCm, floorAreaM2);
 
         // 5) 상태 저장 + 실시간 송출
         DeviceStateEntity state = DeviceStateEntity.builder()
@@ -194,6 +215,34 @@ public class RiskEvaluationService {
                 .map(UserEntity::getHomeAreaM2)
                 .filter(a -> a != null && a > 0)
                 .orElse(0.0);
+    }
+
+    /** 수위 표본의 중앙값(cm). 순간 스파이크에 강함. 비어 있으면 fallback. */
+    private static double median(List<Double> ys, double fallback) {
+        if (ys.isEmpty()) return fallback;
+        List<Double> s = new ArrayList<>(ys);
+        Collections.sort(s);
+        int m = s.size();
+        return (m % 2 == 1) ? s.get(m / 2) : (s.get(m / 2 - 1) + s.get(m / 2)) / 2.0;
+    }
+
+    /**
+     * 표본들의 (초, cm) 최소자승 기울기 → cm/분. 표본 3개 미만이면 0(노이즈로 성급한 상승 판정 방지).
+     * 시각(epoch 초)이 크므로 첫 표본 기준으로 상대화해 대수 상쇄(정밀도 손실)를 막는다.
+     */
+    private static double slopeCmPerMin(List<double[]> pts) {
+        int n = pts.size();
+        if (n < 3) return 0;
+        double x0 = pts.get(0)[0];
+        double sx = 0, sy = 0, sxx = 0, sxy = 0;
+        for (double[] p : pts) {
+            double x = p[0] - x0, y = p[1];
+            sx += x; sy += y; sxx += x * x; sxy += x * y;
+        }
+        double denom = n * sxx - sx * sx;
+        if (Math.abs(denom) < 1e-9) return 0;
+        double slopePerSec = (n * sxy - sx * sy) / denom; // cm/초
+        return slopePerSec * 60.0;                        // cm/분
     }
 
     private Map<String, Object> stateView(DeviceStateEntity s) {

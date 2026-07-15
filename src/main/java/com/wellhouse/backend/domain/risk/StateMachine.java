@@ -13,12 +13,12 @@ public final class StateMachine {
     /** 전이 결과. candidateSince=null 이면 타이머 없음(승격/유지/floor). */
     public record Transition(RiskLevel level, Long candidateSince, boolean changed, String reason) {}
 
-    /** from 단계에서 한 단계 강등에 필요한 안정 시간(분). */
-    public static int requiredStableMinutes(RiskLevel from) {
+    /** from 단계에서 한 단계 강등에 필요한 안정 시간(초). */
+    public static int requiredStableSeconds(RiskLevel from) {
         return switch (from) {
-            case DANGER -> Thresholds.DANGER_TO_WARNING_MIN;
-            case WARNING -> Thresholds.WARNING_TO_CAUTION_MIN;
-            case CAUTION -> Thresholds.CAUTION_TO_GOOD_MIN;
+            case DANGER -> Thresholds.DANGER_TO_WARNING_SEC;
+            case WARNING -> Thresholds.WARNING_TO_CAUTION_SEC;
+            case CAUTION -> Thresholds.CAUTION_TO_GOOD_SEC;
             default -> Integer.MAX_VALUE; // GOOD 아래 없음
         };
     }
@@ -51,7 +51,7 @@ public final class StateMachine {
         // 3) 안정 시간 체크
         long candidateSince = prevCandidateSince != null ? prevCandidateSince : nowMs;
         long stableMs = nowMs - candidateSince;
-        long needMs = (long) requiredStableMinutes(prevLevel) * 60_000L;
+        long needMs = (long) requiredStableSeconds(prevLevel) * 1000L;
 
         if (stableMs >= needMs) {
             RiskLevel next = RiskLevel.fromRank(Math.max(prevLevel.rank - 1, floor.rank));

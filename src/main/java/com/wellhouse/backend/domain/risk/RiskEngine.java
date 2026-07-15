@@ -15,14 +15,13 @@ import java.util.List;
 public final class RiskEngine {
     private RiskEngine() {}
 
-    /** 수위 단계. 3~10cm 구간은 지속 상승(≥0.5cm/min)이면 경고로 승격. */
+    /**
+     * 수위 절대값 4단계. (센서 수위는 서비스에서 median 스무딩된 값이 들어온다.)
+     * 양호 &lt;3 / 주의 3~6 / 경고 6~10 / 위험 10~. riseCmPerMin 은 상승속도 contributor에서 별도 반영.
+     */
     public static RiskLevel waterLevelStage(double levelCm, double riseCmPerMin) {
         if (levelCm >= Thresholds.WATER_DANGER_CM) return RiskLevel.DANGER;
-        if (levelCm >= Thresholds.WATER_WARNING_CM) {
-            return riseCmPerMin >= Thresholds.SUSTAINED_RISE
-                    ? RiskLevel.WARNING
-                    : RiskLevel.CAUTION;
-        }
+        if (levelCm >= Thresholds.WATER_WARNING_CM) return RiskLevel.WARNING;
         if (levelCm >= Thresholds.WATER_CAUTION_CM) return RiskLevel.CAUTION;
         return RiskLevel.GOOD;
     }

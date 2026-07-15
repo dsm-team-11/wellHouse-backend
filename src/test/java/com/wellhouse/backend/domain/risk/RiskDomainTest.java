@@ -13,11 +13,13 @@ class RiskDomainTest {
     @Test
     @DisplayName("수위 단계: 경계값")
     void waterStage() {
+        // 절대값 4단계: 양호 <3 / 주의 3~6 / 경고 6~10 / 위험 10~ (상승속도는 별도 contributor)
         assertEquals(RiskLevel.GOOD, RiskEngine.waterLevelStage(0, 0));
         assertEquals(RiskLevel.GOOD, RiskEngine.waterLevelStage(2.9, 0));
         assertEquals(RiskLevel.CAUTION, RiskEngine.waterLevelStage(3, 0));
-        assertEquals(RiskLevel.CAUTION, RiskEngine.waterLevelStage(5, 0));     // 정지
-        assertEquals(RiskLevel.WARNING, RiskEngine.waterLevelStage(5, 0.6));   // 지속 상승
+        assertEquals(RiskLevel.CAUTION, RiskEngine.waterLevelStage(5.9, 5));   // 상승 중이어도 수위단계는 주의
+        assertEquals(RiskLevel.WARNING, RiskEngine.waterLevelStage(6, 0));
+        assertEquals(RiskLevel.WARNING, RiskEngine.waterLevelStage(9.9, 0));
         assertEquals(RiskLevel.DANGER, RiskEngine.waterLevelStage(10, 0));
         assertEquals(RiskLevel.DANGER, RiskEngine.waterLevelStage(30, 0));
     }
@@ -112,13 +114,14 @@ class RiskDomainTest {
         assertEquals(RiskLevel.DANGER, up.level());
         assertEquals("upgrade", up.reason());
 
-        // DANGER에서 computed=GOOD, 5분 → 아직 강등 안 됨
-        StateMachine.Transition s1 = StateMachine.resolve(RiskLevel.DANGER, t0, RiskLevel.GOOD, t0 + 5 * MIN, RiskLevel.GOOD);
+        // DANGER에서 computed=GOOD, 5초 → 아직 강등 안 됨(안정시간 10초 미달)
+        long sec = 1000L;
+        StateMachine.Transition s1 = StateMachine.resolve(RiskLevel.DANGER, t0, RiskLevel.GOOD, t0 + 5 * sec, RiskLevel.GOOD);
         assertEquals(RiskLevel.DANGER, s1.level());
         assertEquals("stabilizing", s1.reason());
 
-        // 10분 → 한 단계(WARNING)만 강등
-        StateMachine.Transition s2 = StateMachine.resolve(RiskLevel.DANGER, t0, RiskLevel.GOOD, t0 + 10 * MIN, RiskLevel.GOOD);
+        // 10초 → 한 단계(WARNING)만 강등
+        StateMachine.Transition s2 = StateMachine.resolve(RiskLevel.DANGER, t0, RiskLevel.GOOD, t0 + 10 * sec, RiskLevel.GOOD);
         assertEquals(RiskLevel.WARNING, s2.level());
         assertEquals("downgrade", s2.reason());
     }

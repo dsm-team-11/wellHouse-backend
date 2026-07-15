@@ -73,14 +73,17 @@ public class DevDataLoader implements CommandLineRunner {
         deviceRepo.save(demo);
         log.info("데모 기기 리셋: {} (pairingCode=123456, owner 해제)", demoId);
 
-        // 앱 데모: 페어링 즉시 새로고침 시 서버발 상태가 보이도록 상태(경고) 보장.
+        // 앱 데모: 페어링 즉시 상태가 보이도록 GOOD(양호)로 시작점 시드.
+        // 실제 ESP 수위가 들어오면 서버가 수위에 따라 단계를 갱신한다(양호→주의→경고→위험).
         DeviceStateEntity st = stateRepo.findById(demoId)
                 .orElseGet(() -> DeviceStateEntity.builder().deviceId(demoId).build());
-        st.setLevel(RiskLevel.WARNING);
-        st.setRawLevel(RiskLevel.WARNING);
+        st.setLevel(RiskLevel.GOOD);
+        st.setRawLevel(RiskLevel.GOOD);
         st.setRiseCmPerMin(0.0);
+        st.setReportPending(false);
+        st.setFloodEpisodeActive(false);
         st.setUpdatedAt(Instant.now());
         stateRepo.save(st);
-        log.info("데모 기기 상태 시드: {} level=WARNING", demoId);
+        log.info("데모 기기 상태 시드: {} level=GOOD", demoId);
     }
 }

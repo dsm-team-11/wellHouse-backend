@@ -10,10 +10,10 @@ import java.util.Map;
 public final class Thresholds {
     private Thresholds() {}
 
-    // 수위(cm): 양호 0~3 / 주의 3~ / 경고 3~10+지속상승 / 위험 10~
-    public static final double WATER_CAUTION_CM = 3;
-    public static final double WATER_WARNING_CM = 3;   // 3~10 구간, "지속 상승" 동반 시 승격
-    public static final double WATER_DANGER_CM = 10;
+    // 수위(cm) 절대 기준 4단계: 양호 <3 / 주의 3~6 / 경고 6~10 / 위험 10~
+    public static final double WATER_CAUTION_CM = 3;   // 물 유입 시작
+    public static final double WATER_WARNING_CM = 6;   // 감전 위험대 진입
+    public static final double WATER_DANGER_CM = 10;   // 즉시 대피
 
     // 수위 상승 속도(cm/min)
     public static final double RISE_CAUTION_FLOOR = 0.5; // 0.5~2 → 최소 주의
@@ -36,10 +36,11 @@ public final class Thresholds {
     public static final double FORECAST_CAUTION = 30;
     public static final double FORECAST_WARNING = 50;
 
-    // 강등 히스테리시스: 안정 유지 시간(분)
-    public static final int DANGER_TO_WARNING_MIN = 10;
-    public static final int WARNING_TO_CAUTION_MIN = 20;
-    public static final int CAUTION_TO_GOOD_MIN = 30;
+    // 강등 히스테리시스: 안정 유지 시간(초). median 스무딩이 이미 깜빡임을 막으므로,
+    // 데모의 실시간 양방향 반응(물 빠지면 곧 색 하강)을 위해 짧게 둔다. (원래 분 단위 10/20/30)
+    public static final int DANGER_TO_WARNING_SEC = 10;
+    public static final int WARNING_TO_CAUTION_SEC = 10;
+    public static final int CAUTION_TO_GOOD_SEC = 10;
 
     // 인체 기준 위험 수위(m) - 골든타임 프리셋 (삽입 순서 유지)
     public static final Map<String, Double> BODY_HEIGHT_M;
